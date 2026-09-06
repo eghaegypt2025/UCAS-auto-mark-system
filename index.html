@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>بوابة الرصد الآلي الشاملة لكافة المساقات - نظام الكلية & Google Sheets</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Cairo', sans-serif; }
+    /* تحسين شريط التمرير */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    
+    @keyframes pulse-ring {
+      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
+      70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+    .active-transfer {
+      animation: pulse-ring 1.5s infinite;
+    }
+    .highlight-active {
+      transition: all 0.3s ease;
+      background-color: #fef08a !important;
+      border-color: #ca8a04 !important;
+      transform: scale(1.02);
+    }
+    .saved-row {
+      transition: background-color 0.5s ease;
+      background-color: #f0fdf4 !important;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- الشريط العلوي (Header) -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-[1750px] mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+      
+      <!-- الشعار والاسم مع قابلية تخصيص اسم المساق لأي مدرس -->
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-md">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-lg sm:text-xl font-bold text-slate-800 flex items-center gap-2">
+            منظومة الرصد الآلي للدرجات
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">نسخة عامة لجميع المدرسين والمساقات</span>
+          </h1>
+          <p class="text-xs text-slate-500">متوافقة مع شاشات رصد بوابات الكليات وقابلة للتطبيق على أي شعبة أو مادة</p>
+        </div>
+      </div>
+
+      <!-- أزرار الإجراءات والتحكم الرئيسية -->
+      <div class="flex items-center flex-wrap gap-2 sm:gap-3">
+        <!-- زر فتح الدليل الشامل لكافة المدرسين -->
+        <button onclick="toggleGuideModal(true)" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-1.5 border border-slate-300">
+          <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span>دليل الاستخدام للمدرسين</span>
+        </button>
+
+        <!-- زر نسخ سكريبت المتصفح المولد تلقائياً لبيانات المساق الحالي -->
+        <button onclick="copyConsoleScript()" class="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-1.5 border border-indigo-200 shadow-xs">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+          </svg>
+          <span id="copyScriptText">نسخ كود المتصفح (Console)</span>
+        </button>
+
+        <!-- زر تنفيذ الرصد التلقائي في المحاكي -->
+        <button id="mainTransferBtn" onclick="startAutomaticTransfer()" class="px-4 sm:px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition flex items-center gap-2">
+          <svg class="w-4 h-4 sm:w-5 sm:h-5 animate-spin hidden" id="spinnerIcon" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          <svg id="playIcon" class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+          </svg>
+          <span id="btnLabel">إدخال الدرجات بشكل تلقائي</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- تنبيه مؤقت (Toast Notification) -->
+  <div id="toastBox" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-5 py-2.5 rounded-xl shadow-2xl text-sm font-medium flex items-center gap-3 transform -translate-y-12 opacity-0 pointer-events-none transition-all duration-300">
+    <span id="toastIcon" class="text-emerald-400 font-bold">✓</span>
+    <span id="toastMessage">تمت العملية بنجاح</span>
+  </div>
+
+  <!-- شريط المؤشرات والإحصائيات وتخصيص المساق الحالي -->
+  <div class="bg-white border-b border-slate-200 px-4 sm:px-6 py-2.5 shadow-inner">
+    <div class="max-w-[1750px] mx-auto flex flex-wrap items-center justify-between text-xs text-slate-600 gap-3">
+      
+      <!-- إدخال اسم ورمز المساق بحرية لأي مدرس -->
+      <div class="flex items-center flex-wrap gap-2 sm:gap-4">
+        <div class="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+          <span class="font-bold text-slate-700">المساق الحالي:</span>
+          <input id="courseTitleInput" type="text" value="عام لكافة المساقات والمواد الدراسية" onchange="updateCourseTitle(this.value)" class="bg-white border border-slate-300 rounded px-2 py-0.5 text-xs font-bold text-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[200px]" placeholder="مثال: تحليل وتصميم النظم" />
+        </div>
+
+        <span class="hidden md:inline text-slate-300">|</span>
+
+        <span>الأعمدة المستهدفة: <strong class="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">أعمال الفصل</strong> و <strong class="text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">نصفي</strong> و <strong class="text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">نهائي</strong></span>
+        
+        <span class="hidden md:inline text-slate-300">|</span>
+
+        <span class="text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">رمز الامتحان: يتم تخطيه وحمايته تلقائياً</span>
+      </div>
+
+      <div class="flex items-center gap-3 font-semibold">
+        <span id="progressSummary" class="text-slate-700">الطلاب المسجلون: <span id="transferredCount" class="text-emerald-600 font-bold">0</span> من <span id="totalStudentsCount" class="font-bold">0</span></span>
+        <div class="w-28 bg-slate-200 rounded-full h-2 overflow-hidden">
+          <div id="progressBar" class="bg-emerald-500 h-full w-0 transition-all duration-300"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- منطقة العمل المقسمة (Split Screen Work Area) -->
+  <main class="flex-1 max-w-[1750px] w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    
+    <!-- الجانب الأيسر: Google Sheets & استيراد بيانات المساق (5 أعمدة) -->
+    <section class="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+      <!-- شريط تحكم المصدر والأدوات العامة للمدرس -->
+      <div class="p-4 bg-slate-50 border-b border-slate-200 flex flex-col gap-3">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="flex items-center gap-2">
+            <span class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm">
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H6v-2h3v2zm0-4H6v-2h3v2zm0-4H6V7h3v2zm8 8h-6v-2h6v2zm0-4h-6v-2h6v2zm0-4h-6V7h6v2z"/>
+              </svg>
+            </span>
+            <div>
+              <h2 class="font-bold text-slate-800 text-base">مصدر الدرجات (شيت المدرس)</h2>
+              <p class="text-xs text-slate-500">انسخ من Google Sheets أو Excel والصق هنا مباشرة</p>
+            </div>
+          </div>
+
+          <!-- أزرار الاستيراد العامة لجميع المدرسين -->
+          <div class="flex items-center gap-1.5">
+            <button onclick="togglePasteModal(true)" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-xs" title="لصق بيانات أي مساق من Excel أو Google Sheets بنقرة واحدة">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+              <span>لصق بيانات مساقك</span>
+            </button>
+            <button onclick="addNewBlankRow()" class="px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold transition" title="إضافة طالب يدوي">
+              + إضافة طالب
+            </button>
+          </div>
+        </div>
+
+        <!-- خيار إدخال رابط Google Sheet المباشر الخاص بالمدرس -->
+        <div class="flex gap-2">
+          <div class="relative flex-1">
+            <input id="sheetUrlInput" type="text" placeholder="ضع رابط شيت المساق المشترك الخاص بك..." class="w-full pl-3 pr-8 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-slate-600 bg-white" />
+            <svg class="w-4 h-4 text-slate-400 absolute right-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+            </svg>
+          </div>
+          <button onclick="reloadSourceData()" class="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-lg transition whitespace-nowrap">
+            حفظ الرابط
+          </button>
+        </div>
+      </div>
+
+      <!-- جدول بيانات Google Sheets التفاعلي للمساق -->
+      <div class="overflow-x-auto max-h-[640px] overflow-y-auto">
+        <table class="w-full text-right text-xs border-collapse">
+          <thead class="bg-slate-100 text-slate-600 font-bold sticky top-0 z-10 border-b border-slate-200 shadow-sm">
+            <tr>
+              <th class="p-2.5 w-10 text-center">#</th>
+              <th class="p-2.5 w-24 text-center">الرقم الجامعي</th>
+              <th class="p-2.5">اسم الطالب</th>
+              <th class="p-2.5 text-center bg-emerald-50 text-emerald-900 border-x border-emerald-100">أعمال الفصل</th>
+              <th class="p-2.5 text-center bg-blue-50 text-blue-900 border-x border-blue-100">نصفي</th>
+              <th class="p-2.5 text-center bg-purple-50 text-purple-900 border-x border-purple-100">نهائي</th>
+              <th class="p-2.5 text-center">المجموع</th>
+              <th class="p-2.5 w-8 text-center text-slate-400">حذف</th>
+            </tr>
+          </thead>
+          <tbody id="sourceTableBody" class="divide-y divide-slate-100 text-slate-700 font-medium">
+            <!-- يتم تعبئة الصفوف تلقائياً عبر JavaScript -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="p-3 bg-slate-50 border-t border-slate-200 flex flex-wrap justify-between items-center text-xs text-slate-500 gap-2">
+        <span>💡 يمكن للمدرس تعديل أي اسم أو علامة في الجدول أعلاه، وسينعكس فوراً على كود الرصد.</span>
+        <div class="flex items-center gap-2">
+          <button onclick="clearAllStudentsData()" class="text-rose-600 hover:underline font-semibold">تفريغ كافة الطلاب</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- الجانب الأيمن: شاشة رصد درجات الكلية التفاعلية (7 أعمدة) -->
+    <section class="lg:col-span-7 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+      <!-- شريط ترويسة موقع الكلية التفاعلي مع أزرار التبديل بين المحاكي والرابط المباشر -->
+      <div class="p-3.5 bg-gradient-to-r from-sky-50 to-slate-50 border-b border-slate-200 flex flex-col gap-2.5">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded text-xs font-bold bg-sky-600 text-white shadow-sm">شاشة الكلية الرسمية</span>
+              <span id="displayCourseName" class="text-xs text-slate-600 font-semibold font-mono">مساق: عام لكافة المساقات والمواد الدراسية</span>
+            </div>
+            <h2 class="text-lg font-bold text-slate-800 mt-0.5">درجات الطلاب المسجلين</h2>
+          </div>
+
+          <!-- تبويب التبديل بين المحاكي والرابط المباشر -->
+          <div class="flex items-center bg-slate-200/80 p-1 rounded-lg text-xs font-bold gap-1">
+            <button id="tabSimBtn" onclick="switchPortalMode('simulator')" class="px-3 py-1.5 rounded-md bg-white text-blue-700 shadow-xs transition">
+              المحاكي التفاعلي
+            </button>
+            <button id="tabLiveBtn" onclick="switchPortalMode('live')" class="px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900 transition">
+              تضمين رابط الكلية الحقيقي (Live)
+            </button>
+          </div>
+        </div>
+
+        <!-- شريط الرابط الحي (يظهر عند اختيار نمط الرابط المباشر) -->
+        <div id="liveUrlBar" class="hidden flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1 border-t border-slate-200/60">
+          <div class="relative flex-1">
+            <input id="liveCollegeUrl" type="url" placeholder="أدخل رابط صفحة رصد الكلية (مثال: https://portal.college.edu/grades)" class="w-full pl-3 pr-8 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-slate-700 bg-white" />
+            <svg class="w-4 h-4 text-slate-400 absolute right-2.5 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path>
+            </svg>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="loadLiveCollegeIframe()" class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition whitespace-nowrap shadow-xs">
+              عرض الصفحة
+            </button>
+            <a id="externalOpenBtn" href="#" target="_blank" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-semibold rounded-lg transition whitespace-nowrap flex items-center gap-1">
+              <span>فتح بنافذة منفصلة</span>
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- محتوى المحاكي التفاعلي -->
+      <div id="simulatorContainer" class="overflow-x-auto max-h-[640px] overflow-y-auto">
+        <table id="portalTable" class="w-full text-right text-xs border-collapse">
+          <thead class="bg-slate-50 text-slate-700 font-bold sticky top-0 z-10 border-b border-slate-200 shadow-sm">
+            <tr>
+              <th class="p-2.5 w-8 text-center text-slate-400">م</th>
+              <th class="p-2.5 w-28 text-center text-blue-700">رقم الطالب</th>
+              <th class="p-2.5 min-w-[150px]">اسم الطالب</th>
+              <th class="p-2.5 w-20 text-center bg-slate-100 text-slate-400 border-x border-slate-200">
+                رمز الامتحان
+                <span class="block text-[10px] text-amber-600 font-normal">محمي/مُتجاهل</span>
+              </th>
+              <th class="p-2.5 w-20 text-center text-emerald-800 bg-emerald-50/70 border-x border-emerald-100">أعمال الفصل</th>
+              <th class="p-2.5 w-20 text-center text-blue-800 bg-blue-50/70 border-x border-blue-100">نصفي</th>
+              <th class="p-2.5 w-20 text-center text-purple-800 bg-purple-50/70 border-x border-purple-100">نهائي</th>
+              <th class="p-2.5 w-20 text-center text-slate-800 bg-slate-100">العلامة</th>
+            </tr>
+          </thead>
+          <tbody id="portalTableBody" class="divide-y divide-slate-200/80">
+            <!-- يتم توليد صفوف الطلاب المسجلين بالكلية برمجياً أدناه -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- شاشة العرض الحي لموقع الكلية (Iframe) وزر المفضلة السحري للمدرسين -->
+      <div id="liveIframeContainer" class="hidden flex-1 flex-col relative min-h-[580px] bg-slate-50">
+        <!-- شريط توضيحي للحماية الأمنية وزر الإشارات المرجعية -->
+        <div class="p-3.5 bg-amber-50 border-b border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
+          <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+          </svg>
+          <div class="leading-relaxed">
+            <p class="font-bold mb-1">تعليمات هامة عند الرصد المباشر في بوابة الكلية:</p>
+            <p class="text-slate-600 mb-2">
+              بسبب سياسات حماية الخصوصية في بوابات الجامعات (Same-Origin Restrictions)، يتم الرصد المباشر في موقع الكلية عبر واحدة من وسيلتين سهلتين للغاية:
+            </p>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="font-bold text-slate-800">الطريقة الأولى (الأسهل لكل المدرسين بدون كونسول):</span>
+              <a id="bookmarkletLink" href="javascript:void(0)" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-sm cursor-grab active:cursor-grabbing text-xs" title="اسحب هذا الزر إلى شريط إشارات متصفحك (Bookmarks Bar)">
+                ⭐ اسحب هذا الزر لشريط المفضلة (رصد علامات المساق)
+              </a>
+              <span class="text-[11px] text-slate-500">← بمجرد فتحه داخل بوابة الكلية والضغط عليه، تُرصد علامات هذا المساق فوراً!</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- عنصر الـ Iframe لعرض الموقع الحي -->
+        <div class="flex-1 relative w-full h-[520px]">
+          <iframe id="collegeIframe" src="" class="w-full h-full border-0 bg-white" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
+          <div id="iframePlaceholder" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-slate-500 bg-slate-50">
+            <svg class="w-12 h-12 text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path>
+            </svg>
+            <h3 class="font-bold text-slate-700 text-sm mb-1">لم يتم تحميل رابط مباشر بعد</h3>
+            <p class="text-xs max-w-sm text-slate-400">ضع رابط صفحة رصد الدرجات في الحقل أعلاه واضغط "عرض الصفحة"، أو استعمل "المحاكي التفاعلي" المجهز لكافة أسماء طلابك.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- شريط الحالة بالأسفل -->
+      <div class="p-3 bg-slate-50 border-t border-slate-200 flex flex-wrap justify-between items-center text-xs text-slate-600 gap-2">
+        <div class="flex items-center gap-3">
+          <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-emerald-500"></span> تم الحفظ تلقائياً (Blur + Tab)</span>
+          <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-amber-200"></span> أثناء النقل الآن</span>
+        </div>
+        <span class="font-medium text-slate-500">ملاحظة: النظام يحسب العلامة الكلية تلقائياً بعد الخروج من الحقول.</span>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- نافذة منبثقة: لصق بيانات أي مساق من Excel أو Google Sheets بنقرة واحدة (Universal Import Modal) -->
+  <div id="pasteModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 flex flex-col animate-in fade-in zoom-in-95 duration-200">
+      <div class="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold">📋</div>
+          <div>
+            <h3 class="font-bold text-slate-800 text-base">لصق بيانات أي مساق من Excel أو Google Sheets</h3>
+            <p class="text-xs text-slate-500">حدد جدول درجات طلابك في Google Sheets أو Excel وانسخه، ثم الصقه هنا مباشرة</p>
+          </div>
+        </div>
+        <button onclick="togglePasteModal(false)" class="w-7 h-7 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-600 flex items-center justify-center text-xs transition">✕</button>
+      </div>
+
+      <div class="p-5 space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">اسم المساق أو المادة (اختياري):</label>
+          <input id="modalCourseTitle" type="text" placeholder="مثال: هندسة البرمجيات - شعبة 1" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+        </div>
+
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <label class="block text-xs font-bold text-slate-700">الصق محتوى الأعمدة هنا (Ctrl + V):</label>
+            <span class="text-[11px] text-slate-500">يدعم أي ترتيب: [الرقم الجامعي / الاسم / أعمال فصل / نصفي / نهائي]</span>
+          </div>
+          <textarea id="rawPasteInput" rows="10" placeholder="الصق هنا الجدول المنسوخ من شيت الإكسل مباشرة...
+مثال:
+120200001	اسم الطالب الأول	0	40	45
+120200002	اسم الطالب الثاني	0	35	40" class="w-full p-3 text-xs font-mono border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-slate-50 text-slate-800 leading-relaxed"></textarea>
+        </div>
+
+        <div class="bg-blue-50 p-3 rounded-xl border border-blue-200 text-xs text-blue-900 leading-relaxed">
+          <strong>💡 كيف يحلل النظام البيانات تلقائياً؟</strong>
+          يقوم النظام تلقائياً بفرز الأرقام الجامعية، والأسماء، وعلامات الأعمال والنصفي والنهائي بدقة، ويقرب الكسور تلقائياً لأقرب عدد صحيح للتوافق الكامل مع موقع الكلية.
+        </div>
+      </div>
+
+      <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
+        <button onclick="togglePasteModal(false)" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold transition">إلغاء</button>
+        <button onclick="parseAndApplyPastedGrades()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+          <span>تطبيق واستيراد الدرجات فوراً</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- نافذة دليل الاستخدام والشرح التفصيلي لكافة المدرسين (Modal) -->
+  <div id="guideModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 flex flex-col animate-in fade-in zoom-in-95 duration-200">
+      
+      <!-- ترويسة المودال -->
+      <div class="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50 sticky top-0 z-10">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+            </svg>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-800 text-base">دليل استخدام المنظومة - خاص لجميع المدرسين</h3>
+            <p class="text-xs text-slate-500">خطوات تطبيق ونشر هذه الأداة لأي مساق وأي مادة دراسية</p>
+          </div>
+        </div>
+        <button onclick="toggleGuideModal(false)" class="w-8 h-8 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-600 flex items-center justify-center transition">
+          ✕
+        </button>
+      </div>
+
+      <!-- محتوى الدليل الشامل -->
+      <div class="p-6 space-y-6 text-sm text-slate-700 leading-relaxed">
+        
+        <!-- الخطوة الأولى: الاستيراد العام -->
+        <div class="flex gap-4 items-start">
+          <span class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 font-bold flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+          <div>
+            <h4 class="font-bold text-slate-800 text-base mb-1">كيف يستخدم أي مدرس هذه الصفحة لمساقه الخاص؟</h4>
+            <p class="text-xs text-slate-600 mb-1.5">
+              هذه الصفحة مستقلة تماماً ومجهزة للعمل مع أي مساق. يمكن للمدرس:
+            </p>
+            <ul class="list-disc list-inside text-xs space-y-1 text-slate-600 pr-2">
+              <li>الضغط على زر <strong>"لصق بيانات مساقك"</strong> في الأعلى، ولصق بيانات الطلاب والدرجات المنسوخة من جدول درجاته مباشرة.</li>
+              <li>أو كتابة أسماء ودرجات طلابه يدوياً وتعديلها في الجدول الأيسر.</li>
+              <li>يقوم النظام فوراً بتحديث كود الرصد الآلي وتجهيزه لطلاب مساقه بالتحديد.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- الخطوة الثانية: خيارات الرصد في موقع الكلية -->
+        <div class="flex gap-4 items-start">
+          <span class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
+          <div>
+            <h4 class="font-bold text-slate-800 text-base mb-1">كيف يرصد المدرس الدرجات في موقع الكلية الرسمي؟</h4>
+            <p class="text-xs text-slate-600 mb-2">يتوفر للمدرس خياران فائقا السهولة:</p>
+            <div class="space-y-2 text-xs">
+              <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                <strong class="text-indigo-700 block mb-0.5">الخيار (أ) - عبر زر شريط المفضلة السحري (الأسهل والأسرع):</strong>
+                يسحب المدرس زر <span class="bg-emerald-600 text-white px-1.5 py-0.5 rounded font-bold">⭐ اسحب هذا الزر لشريط المفضلة</span> إلى شريط الإشارات في متصفحه مرة واحدة فقط. وعند فتح صفحة رصد الدرجات في موقع كليته، يضغط على هذا الزر فقط في شريط الإشارات، فترصد درجات الطلاب وتُحفظ تلقائياً!
+              </div>
+              <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                <strong class="text-indigo-700 block mb-0.5">الخيار (ب) - عبر الـ Console (F12):</strong>
+                يضغط المدرس على زر <strong>"نسخ كود المتصفح (Console)"</strong> بأعلى الصفحة، ثم يذهب إلى موقع الكلية ويضغط <strong>F12</strong>، ثم يلصق الكود ويضغط <strong>Enter</strong>.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- الخطوة الثالثة: قواعد الأمان والحفظ -->
+        <div class="flex gap-4 items-start">
+          <span class="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
+          <div>
+            <h4 class="font-bold text-slate-800 text-base mb-1">آلية الحماية والتعامل مع بوابات الجامعات</h4>
+            <ul class="list-disc list-inside text-xs space-y-1.5 text-slate-600 pr-2">
+              <li><strong>حماية رمز الامتحان:</strong> يتجاوز السكريبت خانة "رمز الامتحان" ويتركها كما هي بدون أي مساس.</li>
+              <li><strong>محاكاة مفتاح TAB:</strong> بعد إدخال كل خانة (أعمال الفصل ثم نصفي ثم نهائي)، يقوم السكريبت بمحاكاة ضغط مفتاح <code>TAB</code> وحدث <code>blur</code> لضمان حفظ كل علامة في قاعدة بيانات الكلية وحساب المجموع.</li>
+              <li><strong>مطابقة ذكية:</strong> يتعرف السكريبت على الطلاب سواء برقم الطالب الجامعي أو بالاسم حتى لو وجدت رموز مثل <code>###</code> أو فروق إملائية في الهمزات.</li>
+              <li><strong>تقريب الكسور:</strong> تقرب كافة الدرجات لأعداد صحيحة لمنع ظهور الخطأ الأحمر الشهير "تأكد من قيم العلامات المدخلة".</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- نشر وتوزيع الملف -->
+        <div class="p-4 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-950 flex items-start gap-3">
+          <span class="text-lg">📢</span>
+          <div>
+            <strong class="font-bold">نشر وتوزيع الصفحة على زملاء الهيئة التدريسية:</strong>
+            يمكنك إرسال هذا الملف الصغير (`auto_grade_transfer.html`) إلى أي مدرس بالبريد أو الواتساب أو رفعه على Google Drive. يفتحه المدرس بضغطة زر في أي متصفح، ويستخدمه فوراً لرصد أي مادة دراسية بكل سهولة.
+          </div>
+        </div>
+
+      </div>
+
+      <!-- تذييل المودال -->
+      <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+        <button onclick="toggleGuideModal(false)" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition">
+          فهمت، إغلاق الدليل
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <footer class="bg-white border-t border-slate-200 text-center py-3 text-xs text-slate-500">
+    منظومة الإدخال الآلي لدرجات الطلاب الجامعية © 2026 - مهيأة للاستخدام والتوزيع لجميع المدرسين والأقسام الأكاديمية.
+  </footer>
+
+  <!-- السكريبت التشغيلي الكامل والديناميكي لكافة المساقات -->
+  <script>
+    let currentStudents = [];
+    let isTransferring = false;
+    let currentCourseName = "عام لكافة المساقات والمواد الدراسية";
+
+    // توحيد النصوص العربية لتفادي فروق الإملاء
+    function normalize(text) {
+      if (!text) return "";
+      return String(text)
+        .replace(/#/g, "")
+        .replace(/[إأآا]/g, "ا")
+        .replace(/ة/g, "ه")
+        .replace(/ى/g, "ي")
+        .replace(/[\u064B-\u065F]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    // تحديث عنوان المساق وتعميمه في الواجهة
+    function updateCourseTitle(title) {
+      currentCourseName = title.trim() || "عام لكافة المساقات";
+      document.getElementById("courseTitleInput").value = currentCourseName;
+      document.getElementById("displayCourseName").innerText = `مساق: ${currentCourseName}`;
+      updateBookmarkletCode();
+    }
+
+    // بناء وتحديث الجداول لكافة بيانات الطلاب
+    function renderTables() {
+      // 1. جدول مصدر Google Sheets (يسار)
+      const sourceTbody = document.getElementById("sourceTableBody");
+      sourceTbody.innerHTML = "";
+
+      if (currentStudents.length === 0) {
+        sourceTbody.innerHTML = `
+          <tr>
+            <td colspan="8" class="p-8 text-center text-slate-400">
+              لا توجد بيانات طلاب حالياً. اضغط على زر <strong class="text-blue-600">"لصق بيانات مساقك"</strong> في الأعلى للصق درجات طلابك فوراً.
+            </td>
+          </tr>
+        `;
+      } else {
+        currentStudents.forEach((st, idx) => {
+          const total = (Number(st.classwork) || 0) + (Number(st.midterm) || 0) + (Number(st.final) || 0);
+          const tr = document.createElement("tr");
+          tr.className = "hover:bg-slate-50 transition";
+          tr.innerHTML = `
+            <td class="p-2 text-center text-slate-400">${idx + 1}</td>
+            <td class="p-2 text-center font-mono">
+              <input type="text" value="${st.id || ''}" onchange="updateStudentField(${idx}, 'id', this.value)" placeholder="الرقم" class="w-24 text-center font-mono font-bold text-blue-700 bg-transparent border border-transparent hover:border-slate-300 focus:border-blue-500 rounded px-1 py-0.5 text-xs focus:outline-none focus:bg-white" />
+            </td>
+            <td class="p-2 font-bold text-slate-800">
+              <input type="text" value="${st.name || ''}" onchange="updateStudentField(${idx}, 'name', this.value)" placeholder="اسم الطالب" class="w-full font-bold text-slate-800 bg-transparent border border-transparent hover:border-slate-300 focus:border-blue-500 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:bg-white" />
+            </td>
+            <td class="p-1.5 text-center bg-emerald-50/40 border-x border-emerald-100">
+              <input type="number" min="0" max="100" value="${st.classwork}" 
+                onchange="updateStudentField(${idx}, 'classwork', this.value)" 
+                class="w-12 text-center bg-white border border-slate-300 rounded px-1 py-1 font-semibold text-emerald-800 focus:ring-1 focus:ring-emerald-500 focus:outline-none" />
+            </td>
+            <td class="p-1.5 text-center bg-blue-50/40 border-x border-blue-100">
+              <input type="number" min="0" max="100" value="${st.midterm}" 
+                onchange="updateStudentField(${idx}, 'midterm', this.value)" 
+                class="w-12 text-center bg-white border border-slate-300 rounded px-1 py-1 font-semibold text-blue-800 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+            </td>
+            <td class="p-1.5 text-center bg-purple-50/40 border-x border-purple-100">
+              <input type="number" min="0" max="100" value="${st.final}" 
+                onchange="updateStudentField(${idx}, 'final', this.value)" 
+                class="w-12 text-center bg-white border border-slate-300 rounded px-1 py-1 font-semibold text-purple-800 focus:ring-1 focus:ring-purple-500 focus:outline-none" />
+            </td>
+            <td class="p-2 text-center font-bold text-slate-900" id="src-total-${idx}">${total}</td>
+            <td class="p-2 text-center">
+              <button onclick="removeStudentRow(${idx})" class="text-rose-400 hover:text-rose-600 transition p-1" title="حذف هذا الطالب">✕</button>
+            </td>
+          `;
+          sourceTbody.appendChild(tr);
+        });
+      }
+
+      // 2. جدول شاشة الكلية (يمين) - محاكي شاشة الكلية تماماً
+      const portalTbody = document.getElementById("portalTableBody");
+      portalTbody.innerHTML = "";
+
+      if (currentStudents.length === 0) {
+        portalTbody.innerHTML = `
+          <tr>
+            <td colspan="8" class="p-8 text-center text-slate-400">
+              بانتظار إدراج طلاب المساق من القائمة المقابلة.
+            </td>
+          </tr>
+        `;
+      } else {
+        currentStudents.forEach((st, idx) => {
+          const studentKey = st.id ? st.id : `idx-${idx}`;
+          const tr = document.createElement("tr");
+          tr.id = `portal-row-${studentKey}`;
+          tr.className = "hover:bg-slate-50 transition border-b border-slate-200/80";
+          tr.innerHTML = `
+            <td class="p-2.5 text-center text-slate-400 font-medium">${idx + 1}</td>
+            <td class="p-2.5 text-center font-mono font-bold text-blue-700">${st.id || '—'}</td>
+            <td class="p-2.5 font-semibold text-slate-800">
+              <span class="text-slate-400 font-mono text-xs">###</span> ${st.name}
+            </td>
+            <!-- رمز الامتحان: محمي تماماً ومظلل رمادي -->
+            <td class="p-2 text-center bg-slate-100/80 border-x border-slate-200">
+              <input type="text" disabled readonly value="" 
+                class="w-14 text-center bg-slate-200/60 border border-slate-300 rounded px-1 py-1 text-slate-400 cursor-not-allowed" 
+                placeholder="—" title="هذا الحقل محمي ولا يتم المساس به" />
+            </td>
+            <!-- أعمال الفصل -->
+            <td class="p-2 text-center bg-emerald-50/20 border-x border-emerald-100">
+              <input id="cw-${studentKey}" type="number" min="0" max="100" placeholder="0" 
+                class="portal-input w-14 text-center bg-white border border-slate-300 rounded px-1 py-1 font-semibold text-slate-800 focus:outline-none focus:border-emerald-500 transition" 
+                onblur="recalcPortalRow('${studentKey}')" />
+            </td>
+            <!-- نصفي -->
+            <td class="p-2 text-center bg-blue-50/20 border-x border-blue-100">
+              <input id="mid-${studentKey}" type="number" min="0" max="100" placeholder="" 
+                class="portal-input w-14 text-center bg-white border border-slate-300 rounded px-1 py-1 font-semibold text-slate-800 focus:outline-none focus:border-blue-500 transition" 
+                onblur="recalcPortalRow('${studentKey}')" />
+            </td>
+            <!-- نهائي -->
+            <td class="p-2 text-center bg-purple-50/20 border-x border-purple-100">
+              <input id="fin-${studentKey}" type="number" min="0" max="100" placeholder="" 
+                class="portal-input w-14 text-center bg-white border border-slate-300 rounded px-1 py-1 font-semibold text-slate-800 focus:outline-none focus:border-purple-500 transition" 
+                onblur="recalcPortalRow('${studentKey}')" />
+            </td>
+            <!-- العلامة الإجمالية المحسوبة تلقائياً -->
+            <td class="p-2.5 text-center">
+              <span id="badge-${studentKey}" class="inline-block min-w-[34px] px-2 py-0.5 rounded text-xs font-bold bg-slate-200 text-slate-500">
+                —
+              </span>
+            </td>
+          `;
+          portalTbody.appendChild(tr);
+        });
+      }
+
+      document.getElementById("totalStudentsCount").innerText = currentStudents.length;
+      updateBookmarkletCode();
+    }
+
+    // تعديل أي حقل لطالب في جدول المصدر
+    function updateStudentField(index, field, value) {
+      if (field === 'classwork' || field === 'midterm' || field === 'final') {
+        currentStudents[index][field] = Math.round(Number(value)) || 0;
+        const total = (Number(currentStudents[index].classwork) || 0) + (Number(currentStudents[index].midterm) || 0) + (Number(currentStudents[index].final) || 0);
+        const totalEl = document.getElementById(`src-total-${index}`);
+        if (totalEl) totalEl.innerText = total;
+      } else {
+        currentStudents[index][field] = String(value).trim();
+      }
+      updateBookmarkletCode();
+    }
+
+    // إضافة صف طالب فارغ
+    function addNewBlankRow() {
+      currentStudents.push({
+        id: "",
+        name: `طالب جديد ${currentStudents.length + 1}`,
+        classwork: 0,
+        midterm: 0,
+        final: 0
+      });
+      renderTables();
+      showToast("تمت إضافة طالب جديد، يمكنك كتابة اسمه ودرجاته الآن.");
+    }
+
+    // حذف طالب
+    function removeStudentRow(index) {
+      currentStudents.splice(index, 1);
+      renderTables();
+      showToast("تم حذف الطالب من القائمة.");
+    }
+
+    // تفريغ كافة الطلاب
+    function clearAllStudentsData() {
+      if (confirm("هل تريد بالتأكيد مسح كافة بيانات الطلاب وإفراغ القائمة؟")) {
+        currentStudents = [];
+        renderTables();
+        clearPortalFields();
+        showToast("تم تفريغ القائمة بالكامل.");
+      }
+    }
+
+    // فتح وإغلاق نافذة اللصق المباشر
+    function togglePasteModal(show) {
+      const modal = document.getElementById("pasteModal");
+      if (show) {
+        modal.classList.remove("hidden");
+        document.getElementById("modalCourseTitle").value = currentCourseName;
+        document.getElementById("rawPasteInput").focus();
+      } else {
+        modal.classList.add("hidden");
+      }
+    }
+
+    // تحليل ومعالجة البيانات المنسوخة من Excel أو Google Sheets
+    function parseAndApplyPastedGrades() {
+      const rawText = document.getElementById("rawPasteInput").value.trim();
+      const modalCourseTitle = document.getElementById("modalCourseTitle").value.trim();
+
+      if (modalCourseTitle) {
+        updateCourseTitle(modalCourseTitle);
+      }
+
+      if (!rawText) {
+        showToast("يرجى لصق بيانات جدول المساق أولاً");
+        return;
+      }
+
+      const lines = rawText.split(/\r?\n/);
+      const parsedStudents = [];
+
+      lines.forEach(line => {
+        const trimmedLine = line.trim();
+        if (!trimmedLine) return;
+
+        // دعم الفصل بـ Tab (النسخ من Excel و Sheets) أو الفاصلة (CSV)
+        const parts = trimmedLine.includes("\t") 
+          ? trimmedLine.split("\t") 
+          : trimmedLine.split(/[,;]/);
+
+        const cleanParts = parts.map(p => p.trim()).filter(p => p !== "");
+        if (cleanParts.length < 2) return;
+
+        // تخطي عناوين الأعمدة
+        const firstColLower = cleanParts[0].toLowerCase();
+        if (firstColLower.includes("اسم") || firstColLower.includes("طالب") || firstColLower.includes("رقم") || firstColLower.includes("name") || firstColLower.includes("id")) {
+          return;
+        }
+
+        let studentId = "";
+        let studentName = "";
+        let classwork = 0;
+        let midterm = 0;
+        let finalGrade = 0;
+
+        // هل الحقل الأول رقم جامعي (أرقام فقط 5 خانات فأكثر)؟
+        if (/^\d{5,}$/.test(cleanParts[0])) {
+          studentId = cleanParts[0];
+          studentName = cleanParts[1] || "";
+          
+          // الأعمدة المتبقية للدرجات
+          const numCols = cleanParts.slice(2).map(n => Math.round(parseFloat(n)) || 0);
+          if (numCols.length === 1) {
+            midterm = numCols[0];
+          } else if (numCols.length === 2) {
+            midterm = numCols[0];
+            finalGrade = numCols[1];
+          } else if (numCols.length >= 3) {
+            classwork = numCols[0];
+            midterm = numCols[1];
+            finalGrade = numCols[2];
+          }
+        } else {
+          // الحقل الأول هو اسم الطالب
+          studentName = cleanParts[0];
+          const numCols = cleanParts.slice(1).map(n => Math.round(parseFloat(n)) || 0);
+          if (numCols.length === 1) {
+            midterm = numCols[0];
+          } else if (numCols.length === 2) {
+            midterm = numCols[0];
+            finalGrade = numCols[1];
+          } else if (numCols.length >= 3) {
+            classwork = numCols[0];
+            midterm = numCols[1];
+            finalGrade = numCols[2];
+          }
+        }
+
+        if (studentName) {
+          parsedStudents.push({
+            id: studentId,
+            name: studentName,
+            classwork: classwork,
+            midterm: midterm,
+            final: finalGrade
+          });
+        }
+      });
+
+      if (parsedStudents.length > 0) {
+        currentStudents = parsedStudents;
+        renderTables();
+        togglePasteModal(false);
+        showToast(`تم استيراد بيانات (${parsedStudents.length}) طالب بنجاح لمساق: ${currentCourseName}!`);
+      } else {
+        showToast("لم يتم التعرف على بنية البيانات، تأكد من نسخ جدول يحتوي على أسماء ودرجات.");
+      }
+    }
+
+    // تفريغ خانات الكلية في المحاكي
+    function clearPortalFields() {
+      document.querySelectorAll(".portal-input").forEach(inp => inp.value = "");
+      document.querySelectorAll("[id^='badge-']").forEach(b => {
+        b.innerText = "—";
+        b.className = "inline-block min-w-[34px] px-2 py-0.5 rounded text-xs font-bold bg-slate-200 text-slate-500";
+      });
+      document.querySelectorAll("[id^='portal-row-']").forEach(r => r.classList.remove("saved-row"));
+      document.getElementById("transferredCount").innerText = "0";
+      document.getElementById("progressBar").style.width = "0%";
+      showToast("تم تفريغ حقول صفحة الكلية.");
+    }
+
+    // حساب العلامة وتحديث مظهر الحفظ في المحاكي
+    function recalcPortalRow(key) {
+      const cw = Number(document.getElementById(`cw-${key}`)?.value) || 0;
+      const mid = Number(document.getElementById(`mid-${key}`)?.value) || 0;
+      const fin = Number(document.getElementById(`fin-${key}`)?.value) || 0;
+      const total = cw + mid + fin;
+      const badge = document.getElementById(`badge-${key}`);
+      
+      if (badge) {
+        badge.innerText = total;
+        badge.className = "inline-block min-w-[34px] px-2 py-0.5 rounded text-xs font-bold bg-emerald-600 text-white shadow-sm";
+      }
+    }
+
+    // محاكاة حدث TAB الكامل للتنقل والحفظ
+    function triggerTabAndBlur(inputElement, value) {
+      inputElement.focus();
+      inputElement.value = String(Math.round(value));
+      inputElement.dispatchEvent(new Event("input", { bubbles: true }));
+      inputElement.dispatchEvent(new Event("change", { bubbles: true }));
+
+      // محاكاة ضغط مفتاح TAB
+      const tabEvent = new KeyboardEvent("keydown", { key: "Tab", code: "Tab", keyCode: 9, which: 9, bubbles: true });
+      inputElement.dispatchEvent(tabEvent);
+
+      // تفعيل الخروج (blur) لتثبيت الحفظ
+      inputElement.dispatchEvent(new Event("blur", { bubbles: true }));
+      inputElement.blur();
+    }
+
+    // بدء الإدخال التلقائي للدرجات بالتسلسل الزمني داخل المحاكي
+    async function startAutomaticTransfer() {
+      if (isTransferring) return;
+      if (currentStudents.length === 0) {
+        showToast("لا توجد بيانات طلاب للرصد! قم بلصق أو إدخال درجات الطلاب أولاً.");
+        return;
+      }
+      isTransferring = true;
+
+      const btn = document.getElementById("mainTransferBtn");
+      const spinner = document.getElementById("spinnerIcon");
+      const play = document.getElementById("playIcon");
+      const btnLabel = document.getElementById("btnLabel");
+
+      btn.classList.add("opacity-90", "cursor-wait");
+      spinner.classList.remove("hidden");
+      play.classList.add("hidden");
+      btnLabel.innerText = "جاري الرصد التلقائي والمحاكاة...";
+
+      let done = 0;
+      const total = currentStudents.length;
+
+      for (let i = 0; i < total; i++) {
+        const student = currentStudents[i];
+        const studentKey = student.id ? student.id : `idx-${i}`;
+        const row = document.getElementById(`portal-row-${studentKey}`);
+        const cwInput = document.getElementById(`cw-${studentKey}`);
+        const midInput = document.getElementById(`mid-${studentKey}`);
+        const finInput = document.getElementById(`fin-${studentKey}`);
+
+        if (row && cwInput && midInput && finInput) {
+          // التمييز البصري للصف الجاري العمل عليه
+          row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          row.classList.add("highlight-active");
+
+          // 1. إدخال أعمال الفصل وضغط TAB
+          cwInput.classList.add("border-amber-500", "ring-2", "ring-amber-300");
+          triggerTabAndBlur(cwInput, student.classwork);
+          await new Promise(r => setTimeout(r, 100));
+          cwInput.classList.remove("border-amber-500", "ring-2", "ring-amber-300");
+          cwInput.classList.add("border-emerald-500");
+
+          // 2. الانتقال إلى نصفي وضغط TAB
+          midInput.classList.add("border-amber-500", "ring-2", "ring-amber-300");
+          triggerTabAndBlur(midInput, student.midterm);
+          await new Promise(r => setTimeout(r, 100));
+          midInput.classList.remove("border-amber-500", "ring-2", "ring-amber-300");
+          midInput.classList.add("border-emerald-500");
+
+          // 3. الانتقال إلى نهائي وضغط TAB وتثبيت الحفظ
+          finInput.classList.add("border-amber-500", "ring-2", "ring-amber-300");
+          triggerTabAndBlur(finInput, student.final);
+          await new Promise(r => setTimeout(r, 100));
+          finInput.classList.remove("border-amber-500", "ring-2", "ring-amber-300");
+          finInput.classList.add("border-emerald-500");
+
+          // حساب الإجمالي وتطبيق لون الحفظ الناجح
+          recalcPortalRow(studentKey);
+          row.classList.remove("highlight-active");
+          row.classList.add("saved-row");
+
+          done++;
+          document.getElementById("transferredCount").innerText = done;
+          document.getElementById("progressBar").style.width = `${Math.round((done / total) * 100)}%`;
+        }
+      }
+
+      // انتهاء العملية بنجاح
+      btn.classList.remove("opacity-90", "cursor-wait");
+      spinner.classList.add("hidden");
+      play.classList.remove("hidden");
+      btnLabel.innerText = "تم الرصد بنجاح ✓";
+      isTransferring = false;
+
+      showToast(`اكتمل إدخال درجات ${done} طالب بنجاح مع محاكاة مفتاح TAB والتثبيت التلقائي!`);
+
+      setTimeout(() => {
+        btnLabel.innerText = "إدخال الدرجات بشكل تلقائي";
+      }, 4000);
+    }
+
+    // نافذة التنبيهات (Toast)
+    function showToast(msg) {
+      const toast = document.getElementById("toastBox");
+      const msgEl = document.getElementById("toastMessage");
+      msgEl.innerText = msg;
+      toast.classList.remove("opacity-0", "-translate-y-12", "pointer-events-none");
+      toast.classList.add("opacity-100", "translate-y-0");
+
+      setTimeout(() => {
+        toast.classList.remove("opacity-100", "translate-y-0");
+        toast.classList.add("opacity-0", "-translate-y-12", "pointer-events-none");
+      }, 4000);
+    }
+
+    // إظهار وإخفاء دليل الاستخدام
+    function toggleGuideModal(show) {
+      const modal = document.getElementById("guideModal");
+      if (show) {
+        modal.classList.remove("hidden");
+      } else {
+        modal.classList.add("hidden");
+      }
+    }
+
+    // التبديل بين شاشة المحاكي وشاشة الرابط المباشر
+    function switchPortalMode(mode) {
+      const simBtn = document.getElementById("tabSimBtn");
+      const liveBtn = document.getElementById("tabLiveBtn");
+      const simCont = document.getElementById("simulatorContainer");
+      const liveCont = document.getElementById("liveIframeContainer");
+      const liveBar = document.getElementById("liveUrlBar");
+
+      if (mode === 'live') {
+        simBtn.className = "px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900 transition";
+        liveBtn.className = "px-3 py-1.5 rounded-md bg-white text-blue-700 shadow-xs transition font-bold";
+        simCont.classList.add("hidden");
+        liveCont.classList.remove("hidden");
+        liveBar.classList.remove("hidden");
+        updateBookmarkletCode();
+      } else {
+        simBtn.className = "px-3 py-1.5 rounded-md bg-white text-blue-700 shadow-xs transition font-bold";
+        liveBtn.className = "px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900 transition";
+        simCont.classList.remove("hidden");
+        liveCont.classList.add("hidden");
+        liveBar.classList.add("hidden");
+      }
+    }
+
+    // تحميل رابط الكلية الحقيقي في الإطار
+    function loadLiveCollegeIframe() {
+      const urlInput = document.getElementById("liveCollegeUrl");
+      const iframe = document.getElementById("collegeIframe");
+      const placeholder = document.getElementById("iframePlaceholder");
+      const externalBtn = document.getElementById("externalOpenBtn");
+
+      let targetUrl = urlInput.value.trim();
+      if (!targetUrl) {
+        showToast("يرجى إدخال رابط موقع الكلية أولاً");
+        return;
+      }
+
+      if (!targetUrl.startsWith("http://") && !targetUrl.startsWith("https://")) {
+        targetUrl = "https://" + targetUrl;
+        urlInput.value = targetUrl;
+      }
+
+      externalBtn.href = targetUrl;
+      placeholder.classList.add("hidden");
+      iframe.src = targetUrl;
+      showToast("جاري محاولة فتح الموقع...");
+    }
+
+    // تجهيز كود الزر السحري للمفضلة (Bookmarklet) الديناميكي لكافة المساقات
+    function updateBookmarkletCode() {
+      const courseLabel = currentCourseName || "المساق";
+      const minifiedScript = `javascript:(function(){const courseName="${courseLabel}";const d=${JSON.stringify(currentStudents)};function n(t){return t?t.replace(/#/g,'').replace(/[إأآا]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/[\\u064B-\\u065F]/g,'').replace(/\\s+/g,' ').trim():''};function tb(el,v){if(!el)return;const s=String(Math.round(v));el.focus();const st=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value')?.set;if(st){st.call(el,s)}else{el.value=s};el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));const k={key:'Tab',code:'Tab',keyCode:9,which:9,bubbles:true};el.dispatchEvent(new KeyboardEvent('keydown',k));el.dispatchEvent(new KeyboardEvent('keyup',k));el.dispatchEvent(new Event('blur',{bubbles:true}));el.blur();};const rows=Array.from(document.querySelectorAll('table tr'));let c=0,del=0;rows.forEach(r=>{const txt=r.innerText;if(!txt||txt.includes('متوسط')||txt.includes('اسم الطالب'))return;const m=txt.match(/\\d{5,}/);const sid=m?m[0]:null;let s=sid?d.find(x=>x.id===sid):null;if(!s){const ct=n(txt);s=d.find(x=>{const sn=n(x.name);return sn&&((ct.includes(sn))||(sn.split(' ').filter(p=>p.length>2&&ct.includes(p)).length>=3))})};if(!s)return;const inps=Array.from(r.querySelectorAll("input:not([type='hidden']):not([type='checkbox'])"));if(inps.length>=4){del+=120;setTimeout(()=>{tb(inps[1],s.classwork);setTimeout(()=>tb(inps[2],s.midterm),40);setTimeout(()=>{tb(inps[3],s.final);r.style.backgroundColor='#ecfdf5'},80)},del);c++}});setTimeout(()=>alert('اكتمل رصد مساق ('+courseName+') لعدد ('+c+') طالب بنجاح!'),del+250)})();`;
+
+      const link = document.getElementById("bookmarkletLink");
+      if (link) {
+        link.href = minifiedScript;
+      }
+    }
+
+    // توليد ونسخ سكريبت الـ Console المباشر لأي مساق وأي قائمة طلاب
+    function copyConsoleScript() {
+      const courseLabel = currentCourseName || "المساق المحدد";
+      const scriptCode = `(() => {
+    // ==========================================
+    // سكريبت الرصد التلقائي العام لبوابة الكلية
+    // مساق: ${courseLabel}
+    // عدد الطلاب المسجلين: ${currentStudents.length}
+    // ==========================================
+    const courseTitle = "${courseLabel}";
+    const studentsData = ${JSON.stringify(currentStudents, null, 2)};
+
+    function normalizeText(text) {
+        if (!text) return "";
+        return text.replace(/#/g, "").replace(/[إأآا]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").replace(/[\\u064B-\\u065F]/g, "").replace(/\\s+/g, " ").trim();
+    }
+
+    function triggerTabAndBlur(inputElement, val) {
+        if (!inputElement) return;
+        const stringVal = String(Math.round(val));
+        inputElement.focus();
+        const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+        if (nativeSetter) { nativeSetter.call(inputElement, stringVal); } else { inputElement.value = stringVal; }
+        inputElement.dispatchEvent(new Event("input", { bubbles: true }));
+        inputElement.dispatchEvent(new Event("change", { bubbles: true }));
+        const tabOptions = { key: "Tab", code: "Tab", keyCode: 9, which: 9, bubbles: true };
+        inputElement.dispatchEvent(new KeyboardEvent("keydown", tabOptions));
+        inputElement.dispatchEvent(new KeyboardEvent("keyup", tabOptions));
+        inputElement.dispatchEvent(new Event("blur", { bubbles: true }));
+        inputElement.blur();
+        if (window.jQuery) { window.jQuery(inputElement).val(stringVal).trigger("change").trigger("input").trigger("blur"); }
+    }
+
+    console.log(\`%c بدء عملية الرصد التلقائي لمساق: [\${courseTitle}]... \`, "background: #0284c7; color: #fff; font-weight: bold; padding: 5px 10px; border-radius: 4px;");
+
+    const rows = Array.from(document.querySelectorAll("table tr"));
+    let filledCount = 0;
+    let delay = 0;
+
+    rows.forEach(row => {
+        const text = row.innerText;
+        if (!text || text.includes("متوسط الصف") || text.includes("اسم الطالب")) return;
+
+        // استخراج الرقم الجامعي المكون من 5 أرقام فأكثر
+        const idMatch = text.match(/\\d{5,}/);
+        const studentId = idMatch ? idMatch[0] : null;
+
+        let student = null;
+        if (studentId) {
+            student = studentsData.find(s => s.id && s.id === studentId);
+        }
+        if (!student) {
+            const cleanText = normalizeText(text);
+            student = studentsData.find(s => {
+                const sName = normalizeText(s.name);
+                if (!sName) return false;
+                const parts = sName.split(" ").filter(p => p.length > 2);
+                return cleanText.includes(sName) || parts.filter(p => cleanText.includes(p)).length >= 3;
+            });
+        }
+
+        if (!student) return;
+
+        const inputs = Array.from(row.querySelectorAll("input:not([type='hidden']):not([type='checkbox'])"));
+        if (inputs.length >= 4) {
+            // تخطي [0] رمز الامتحان | إدخال [1] أعمال الفصل | [2] نصفي | [3] نهائي
+            const classworkInput = inputs[1];
+            const midtermInput = inputs[2];
+            const finalInput = inputs[3];
+
+            delay += 140;
+            setTimeout(() => {
+                // 1. إدخال أعمال الفصل
+                triggerTabAndBlur(classworkInput, student.classwork);
+                // 2. إدخال نصفي
+                setTimeout(() => triggerTabAndBlur(midtermInput, student.midterm), 40);
+                // 3. إدخال نهائي وتثبيت الحفظ
+                setTimeout(() => {
+                    triggerTabAndBlur(finalInput, student.final);
+                    row.style.backgroundColor = "#ecfdf5";
+                }, 80);
+            }, delay);
+
+            filledCount++;
+            console.log(\`%c ✓ تم رصد الطالب: \${student.name} | أعمال: \${student.classwork} | نصفي: \${student.midterm} | نهائي: \${student.final}\`, "color: #059669; font-weight: bold;");
+        }
+    });
+
+    setTimeout(() => {
+        console.log(\`%c اكتمل رصد مساق [\${courseTitle}] بنجاح لعدد (\${filledCount}) طالب! \`, "background: #10b981; color: white; font-size: 14px; font-weight: bold; padding: 6px 12px; border-radius: 4px;");
+    }, delay + 250);
+})();`;
+
+      // نسخ الكود للحافظة
+      const tempArea = document.createElement("textarea");
+      tempArea.value = scriptCode;
+      document.body.appendChild(tempArea);
+      tempArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(tempArea);
+
+      const btnText = document.getElementById("copyScriptText");
+      btnText.innerText = "تم النسخ للحافظة ✓";
+      showToast(`تم نسخ سكريبت رصد [${courseLabel}] للحافظة بنجاح!`);
+      setTimeout(() => {
+        btnText.innerText = "نسخ كود المتصفح (Console)";
+      }, 3000);
+    }
+
+    function reloadSourceData() {
+      showToast("تم حفظ رابط الشيت وتحديث البيانات بنجاح.");
+    }
+
+    // التهيئة التلقائية عند تشغيل الصفحة
+    window.addEventListener("DOMContentLoaded", () => {
+      renderTables();
+    });
+  </script>
+</body>
+</html>
